@@ -25,13 +25,18 @@ In your carconnectivity.json configuration add a section for the volkswagen conn
                 "type": "volkswagen_na",
                 "config": {
                     "username": "test@test.de",
-                    "password": "testpassword123"
+                    "password": "testpassword123",
+                    "country": "us"
                 }
             }
         ]
     }
 }
-```
+``
+
+Country is optional, and defaults to 'us'. 'ca' may work, but is currently untested.
+
+
 ### Credentials
 If you do not want to provide your username or password inside the configuration you have to create a ".netrc" file at the appropriate location (usually this is your home folder):
 ```

@@ -52,6 +52,7 @@ class Service(Enum):
         __str__() -> str: Returns the string representation of the service.
     """
     MY_VW = 'MyVW'
+    MY_VW_CA = 'MyVWCA'
 
     def __str__(self) -> str:
         return self.value
@@ -128,6 +129,8 @@ class SessionManager():
 
         if service == Service.MY_VW:
             session = MyVWSession(session_user=session_user, token=token, metadata=metadata, cache=cache)
+        elif sevice == Service.MY_VW_CA:
+            session = MyVWSession(session_user=session_user, token=token, metadata=metadata, cache=cache, country='ca')
         else:
             raise ValueError(f"Unsupported service: {service}")
 

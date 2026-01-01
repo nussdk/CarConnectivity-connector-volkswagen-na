@@ -150,7 +150,10 @@ class Connector(BaseConnector):
         if not isinstance(session, MyVWSession):
             raise AuthenticationError('Could not create session')
         self.session: MyVWSession = session
-        self.base_url = "https://b-h-s.spr.us00.p.con-veh.net"
+        countrypart = "us"
+        if "country" in config:
+            countrypart = "ca"
+        self.base_url = f"https://b-h-s.spr.{countrypart}00.p.con-veh.net"
         self.session.retries = 3
         self.session.timeout = 180
 
