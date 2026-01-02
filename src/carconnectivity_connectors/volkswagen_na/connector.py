@@ -1202,6 +1202,8 @@ class Connector(BaseConnector):
                     else:
                         vehicle.charging.connector.lock_state._set_value(None)  # pylint: disable=protected-access
                     if 'infrastructureState' in plug_status and plug_status['infrastructureState'] is not None:
+                        if plug_status['infrastructureState'] == 'ready':
+                            plug_status['infrastructureState'] = ChargingConnector.ExternalPower.AVAILABLE.value
                         if plug_status['infrastructureState'] in [item.value for item in ChargingConnector.ExternalPower]:
                             external_power: ChargingConnector.ExternalPower = \
                                 ChargingConnector.ExternalPower(plug_status['infrastructureState'])
