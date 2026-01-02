@@ -35,7 +35,7 @@ class VolkswagenNAVehicle(GenericVehicle):  # pylint: disable=too-many-instance-
         The license plate of the vehicle.
     """
     def __init__(self, vin: Optional[str] = None, garage: Optional[Garage] = None, managing_connector: Optional[BaseConnector] = None,
-                 origin: Optional[VolkswagenVehicle] = None) -> None:
+                 origin: Optional[VolkswagenNAVehicle] = None) -> None:
         if origin is not None:
             super().__init__(garage=garage, origin=origin)
             self.capabilities: Capabilities = origin.capabilities
@@ -65,7 +65,7 @@ class VolkswagenNAElectricVehicle(ElectricVehicle, VolkswagenNAVehicle):
     Represents a Volkswagen electric vehicle.
     """
     def __init__(self, vin: Optional[str] = None, garage: Optional[Garage] = None, managing_connector: Optional[BaseConnector] = None,
-                 origin: Optional[VolkswagenVehicle] = None) -> None:
+                 origin: Optional[VolkswagenNAVehicle] = None) -> None:
         if origin is not None:
             super().__init__(garage=garage, origin=origin)
             if isinstance(origin, ElectricVehicle):
@@ -82,7 +82,7 @@ class VolkswagenNACombustionVehicle(CombustionVehicle, VolkswagenNAVehicle):
     Represents a Volkswagen combustion vehicle.
     """
     def __init__(self, vin: Optional[str] = None, garage: Optional[Garage] = None, managing_connector: Optional[BaseConnector] = None,
-                 origin: Optional[VolkswagenVehicle] = None) -> None:
+                 origin: Optional[VolkswagenNAVehicle] = None) -> None:
         if origin is not None:
             super().__init__(garage=garage, origin=origin)
         else:
@@ -94,7 +94,7 @@ class VolkswagenNAHybridVehicle(HybridVehicle, VolkswagenNAElectricVehicle, Volk
     Represents a Volkswagen hybrid vehicle.
     """
     def __init__(self, vin: Optional[str] = None, garage: Optional[Garage] = None, managing_connector: Optional[BaseConnector] = None,
-                 origin: Optional[VolkswagenVehicle] = None) -> None:
+                 origin: Optional[VolkswagenNAVehicle] = None) -> None:
         if origin is not None:
             super().__init__(garage=garage, origin=origin)
         else:

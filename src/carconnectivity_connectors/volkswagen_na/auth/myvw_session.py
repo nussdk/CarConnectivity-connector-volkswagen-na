@@ -15,7 +15,7 @@ from urllib.parse import parse_qs, parse_qsl, urlparse
 import requests
 from requests.models import CaseInsensitiveDict
 
-from oauthlib.common import add_params_to_uri, generate_nonce, to_unicode
+from oauthlib.common import add_params_to_uri, to_unicode
 from oauthlib.oauth2 import InsecureTransportError
 from oauthlib.oauth2 import is_secure_transport
 
@@ -46,7 +46,7 @@ class MyVWSession(VWWebSession):
                                                state=None,
                                                session_user=session_user,
                                                **kwargs)
-    
+
         self.country = countrypart
 
         self.verifier = None
@@ -61,30 +61,6 @@ class MyVWSession(VWWebSession):
             'Pragma': 'no-cache'
         })
 
-    def request(
-        self,
-        method,
-        url,
-        data=None,
-        headers=None,
-        withhold_token=False,
-        access_type=AccessType.ACCESS,
-        token=None,
-        timeout=None,
-        **kwargs
-    ):
-        """Intercept all requests and add weconnect-trace-id header."""
-
-        #import secrets
-        #traceId = secrets.token_hex(16)
-        #we_connect_trace_id = (traceId[:8] + '-' + traceId[8:12] + '-' + traceId[12:16] + '-' + traceId[16:20] + '-' + traceId[20:]).upper()
-        #headers = headers or {}
-        #headers['weconnect-trace-id'] = we_connect_trace_id
-
-        return super(MyVWSession, self).request(
-            method, url, headers=headers, data=data, withhold_token=withhold_token, access_type=access_type, token=token, timeout=timeout, **kwargs
-        )
-
     def login(self):
         super(MyVWSession, self).login()
         # retrieve authorization URL
@@ -98,7 +74,6 @@ class MyVWSession(VWWebSession):
 
     def refresh(self) -> None:
         # refresh tokens from refresh endpoint
-        token = self.token
         self.refresh_tokens(
             f'https://b-h-s.spr.{self.country}00.p.con-veh.net/oidc/v1/token'
         )
@@ -171,7 +146,7 @@ class MyVWSession(VWWebSession):
             'redirect_uri': self.redirect_uri,
             'code_verifier': self.verifier
         }
-        
+
         #        'grant_type': 'authorization_code',
         #        'code': query['code'][0],
         #        'client_id': self.client_id,
@@ -221,7 +196,6 @@ class MyVWSession(VWWebSession):
 
             return token
         return self.token
-        return None
 
     def parse_from_body(self, token_response, state=None):
         """

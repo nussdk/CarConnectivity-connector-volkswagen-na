@@ -90,8 +90,7 @@ class VWWebSession(OpenIDSession):
         target_base_url = parsed_url.scheme + '://' + parsed_url.netloc
 
         if parsed_url.netloc == 'identity.na.vwgroup.io':
-            email_form.target = f'/signin-service/v1/b680e751-7e1f-4008-8ec1-3a528183d215@apps_vw-dilab_com/login/identifier'
-            pass
+            email_form.target = '/signin-service/v1/b680e751-7e1f-4008-8ec1-3a528183d215@apps_vw-dilab_com/login/identifier'
 
         # Get password form
         password_form = self._get_password_form(

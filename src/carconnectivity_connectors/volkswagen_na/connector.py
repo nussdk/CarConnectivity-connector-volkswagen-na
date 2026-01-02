@@ -10,8 +10,8 @@ import traceback
 import logging
 import netrc
 from datetime import datetime, timezone, timedelta
-import requests
 import hashlib
+import requests
 
 from carconnectivity.garage import Garage
 from carconnectivity.errors import AuthenticationError, TooManyRequestsError, RetrievalError, APIError, APICompatibilityError, \
@@ -27,7 +27,7 @@ from carconnectivity.battery import Battery
 from carconnectivity.attributes import BooleanAttribute, DurationAttribute, GenericAttribute, TemperatureAttribute, EnumAttribute, LevelAttribute, \
     CurrentAttribute
 from carconnectivity.units import Temperature
-from carconnectivity.command_impl import ClimatizationStartStopCommand, WakeSleepCommand, HonkAndFlashCommand, LockUnlockCommand, ChargingStartStopCommand, \
+from carconnectivity.command_impl import ClimatizationStartStopCommand, HonkAndFlashCommand, LockUnlockCommand, ChargingStartStopCommand, \
     WindowHeatingStartStopCommand
 from carconnectivity.climatization import Climatization
 from carconnectivity.commands import Commands
@@ -40,12 +40,10 @@ from carconnectivity.window_heating import WindowHeatings
 from carconnectivity_connectors.base.connector import BaseConnector
 from carconnectivity_connectors.volkswagen_na.auth.session_manager import SessionManager, SessionUser, Service
 from carconnectivity_connectors.volkswagen_na.auth.myvw_session import MyVWSession
-from carconnectivity_connectors.volkswagen_na.vehicle import VolkswagenNAVehicle, VolkswagenNAElectricVehicle, VolkswagenNACombustionVehicle, \
-    VolkswagenNAHybridVehicle
+from carconnectivity_connectors.volkswagen_na.vehicle import VolkswagenNAVehicle, VolkswagenNAElectricVehicle, VolkswagenNACombustionVehicle
 from carconnectivity_connectors.volkswagen_na.climatization import VolkswagenClimatization
 from carconnectivity_connectors.volkswagen_na.capability import Capability
 from carconnectivity_connectors.volkswagen_na._version import __version__
-from carconnectivity_connectors.volkswagen_na.command_impl import SpinCommand
 from carconnectivity_connectors.volkswagen_na.charging import VolkswagenNACharging, mapping_volskwagen_charging_state
 
 SUPPORT_IMAGES = False
@@ -145,7 +143,10 @@ class Connector(BaseConnector):
             raise AuthenticationError('Username or password not provided')
 
         self._manager: SessionManager = SessionManager(tokenstore=car_connectivity.get_tokenstore(), cache=car_connectivity.get_cache())
-        session: requests.Session = self._manager.get_session(Service.MY_VW, SessionUser(username=self.active_config['username'],
+        service = Service.MY_VW
+        if 'country' in config and config['country'] is not None and config['country'].lower() == 'ca':
+            service = Service.MY_VW_CA
+        session: requests.Session = self._manager.get_session(service, SessionUser(username=self.active_config['username'],
                                                                                             password=self.active_config['password']))
         if not isinstance(session, MyVWSession):
             raise AuthenticationError('Could not create session')
@@ -304,8 +305,9 @@ class Connector(BaseConnector):
                             garage.add_vehicle(vehicle_dict['vin'], vehicle)
 
                         if 'vehicleId' not in vehicle_dict or vehicle_dict['vehicleId'] is None:
-                            raise valueError('Cannot have VW NA vehicle without vehicleId')
+                            raise ValueError('Cannot have VW NA vehicle without vehicleId')
 
+                        # pylint: disable=protected-access
                         vehicle.uuid._set_value(value=vehicle_dict['vehicleId'])
 
                         if 'vehicleNickName' in vehicle_dict and vehicle_dict['vehicleNickName'] is not None:
@@ -404,7 +406,9 @@ class Connector(BaseConnector):
                                             if self.session.cache is not None:
                                                 buffered = io.BytesIO()  # pyright: ignore[reportPossiblyUnboundVariable]
                                                 img.save(buffered, format="PNG")
-                                                img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")  # pyright: ignore[reportPossiblyUnboundVariable]
+                                                img_str = base64.b64encode(
+                                                    buffered.getvalue()
+                                                    ).decode("utf-8")  # pyright: ignore[reportPossiblyUnboundVariable]
                                                 self.session.cache[imageurl] = (img_str, str(datetime.utcnow()))
                                         elif image_download_response.status_code == requests.codes['unauthorized']:
                                             LOG.info('Server asks for new authorization')
@@ -448,6 +452,7 @@ class Connector(BaseConnector):
             vehicle (VolkswagenNAVehicle): The Volkswagen vehicle object.
         """
         if vehicle is not None:
+            # pylint: disable=protected-access
             if vehicle.connection_state is not None and vehicle.connection_state.enabled \
                     and vehicle.connection_state.value == GenericVehicle.ConnectionState.OFFLINE:
                 vehicle.state._set_value(GenericVehicle.State.OFFLINE)
@@ -469,6 +474,7 @@ class Connector(BaseConnector):
         Returns:
             None
         """
+        # pylint: disable=protected-access
         vin = vehicle.vin.value
         if vin is None:
             raise ValueError('vehicle.vin cannot be None')
@@ -528,17 +534,16 @@ class Connector(BaseConnector):
                     drive.type._set_value(engine_type)  # pylint: disable=protected-access
                     vehicle.drives.add_drive(drive)
                 if 'cruiseRange' in power_status and power_status['cruiseRange'] is not None:
-                    drive.range._set_value(value=float(power_status['cruiseRange']), measured=captured_at, unit=Length.KM if power_status['cruiseRangeUnits'] == 'KM' else Length.MI)
+                    drive.range._set_value(value=float(power_status['cruiseRange']), measured=captured_at, unit=Length.KM if power_status['cruiseRangeUnits'] == 'KM' else Length.MI) # pylint: disable=protected-access
                     drive.range.precision = 1
-                    vehicle.drives.total_range._set_value(value=float(power_status['cruiseRange']), measured=captured_at, unit=Length.KM if power_status['cruiseRangeUnits'] == 'KM' else Length.MI)
+                    vehicle.drives.total_range._set_value(value=float(power_status['cruiseRange']), measured=captured_at, unit=Length.KM if power_status['cruiseRangeUnits'] == 'KM' else Length.MI) # pylint: disable=protected-access
                     vehicle.drives.total_range.precision = 1
                 else:
                     drive.range._set_value(None, measured=captured_at, unit=Length.KM)  # pylint: disable=protected-access
                     vehicle.drives.total_range._set_value(None)  # pylint: disable=protected-access
 
                 if 'fuelPercentRemaining' in power_status and power_status['fuelPercentRemaining'] is not None and engine_type is not GenericDrive.Type.ELECTRIC:
-                    # pylint: disable-next=protected-access
-                    drive.level._set_value(value=float(power_status['fuelPercentRemaining']), measured=captured_at)
+                    drive.level._set_value(value=float(power_status['fuelPercentRemaining']), measured=captured_at) # pylint: disable=protected-access
                     drive.level.precision = 1
 
                 log_extra_keys(LOG_API, 'powerStatus', power_status, {'cruiseRange', 'fuelPercentRemaining', 'cruiseRangeUnits', 'cruiseRangeFirst'})
@@ -567,7 +572,7 @@ class Connector(BaseConnector):
                     vehicle.position.longitude.precision = 0.000001
                     vehicle.position.position_type._set_value(Position.PositionType.PARKING, measured=captured_at)  # pylint: disable=protected-access
                 else:
-                    LOG.debug('Unable to find valid location data in response', data)
+                    LOG.debug('Unable to find valid location data in response: %s', json.dumps(data))
                     vehicle.position.latitude._set_value(None)  # pylint: disable=protected-access
                     vehicle.position.longitude._set_value(None)  # pylint: disable=protected-access
                     vehicle.position.position_type._set_value(None)  # pylint: disable=protected-access
@@ -583,7 +588,7 @@ class Connector(BaseConnector):
                     vehicle.position.longitude.precision = 0.000001
                     vehicle.position.position_type._set_value(Position.PositionType.PARKING, measured=captured_at)  # pylint: disable=protected-access
                 else:
-                    LOG.debug('Unable to find valid location data in response', data)
+                    LOG.debug('Unable to find valid location data in response: %s', json.dumps(data))
                     vehicle.position.latitude._set_value(None)  # pylint: disable=protected-access
                     vehicle.position.longitude._set_value(None)  # pylint: disable=protected-access
                     vehicle.position.position_type._set_value(None)  # pylint: disable=protected-access
@@ -646,13 +651,13 @@ class Connector(BaseConnector):
                 vehicle.odometer._set_value(None)  # pylint: disable=protected-access
 
             if 'exteriorStatus' in data and data['exteriorStatus'] is not None:
-                exteriorStatus = data['exteriorStatus']
+                exterior_status = data['exteriorStatus']
                 seen_door_ids: set[str] = set()
-                if 'doorStatus' in exteriorStatus and exteriorStatus['doorStatus'] is not None:
+                if 'doorStatus' in exterior_status and exterior_status['doorStatus'] is not None:
                     all_doors_closed = True
-                    if 'doorStatusTimestmap' in exteriorStatus['doorStatus']:
-                        captured_at = datetime.fromtimestamp((exteriorStatus['doorStatus']['doorStatusTimestamp'] / 1000), tz=timezone.utc)
-                    for door_id, door_status in exteriorStatus['doorStatus'].items():
+                    if 'doorStatusTimestmap' in exterior_status['doorStatus']:
+                        captured_at = datetime.fromtimestamp((exterior_status['doorStatus']['doorStatusTimestamp'] / 1000), tz=timezone.utc)
+                    for door_id, door_status in exterior_status['doorStatus'].items():
                         if door_status == 'NOTAVAILABLE' or door_id == 'doorStatusTimestamp':
                             continue
                         seen_door_ids.add(door_id)
@@ -673,10 +678,10 @@ class Connector(BaseConnector):
                         vehicle.doors.open_state._set_value(Doors.OpenState.CLOSED, measured=captured_at)  # pylint: disable=protected-access
                     else:
                         vehicle.doors.open_state._set_value(Doors.OpenState.OPEN, measured=captured_at)  # pylint: disable=protected-access
-                if 'doorLockStatus' in exteriorStatus and exteriorStatus['doorLockStatus'] is not None:
-                    if 'doorLockStatusTimestmap' in exteriorStatus['doorLockStatus']:
-                        captured_at = datetime.fromtimestamp((exteriorStatus['doorLockStatus']['doorLockStatusTimestamp'] / 1000), tz=timezone.utc)
-                    for door_id, door_status in exteriorStatus['doorLockStatus'].items():
+                if 'doorLockStatus' in exterior_status and exterior_status['doorLockStatus'] is not None:
+                    if 'doorLockStatusTimestmap' in exterior_status['doorLockStatus']:
+                        captured_at = datetime.fromtimestamp((exterior_status['doorLockStatus']['doorLockStatusTimestamp'] / 1000), tz=timezone.utc)
+                    for door_id, door_status in exterior_status['doorLockStatus'].items():
                         if door_status == 'NOTAVAILABLE' or door_id == 'doorLockStatusTimestamp':
                             continue
                         seen_door_ids.add(door_id)
@@ -693,20 +698,20 @@ class Connector(BaseConnector):
                             door.lock_state._set_value(Doors.LockState.UNKNOWN, measured=captured_at)  # pylint: disable=protected-access
                 for door_id in vehicle.doors.doors.keys() - seen_door_ids:
                     vehicle.doors.doors[door_id].enabled = False
-                if 'secure' in exteriorStatus and exteriorStatus['secure'] is not None:
-                    if exteriorStatus['secure'] == 'SECURE':
+                if 'secure' in exterior_status and exterior_status['secure'] is not None:
+                    if exterior_status['secure'] == 'SECURE':
                         vehicle.doors.lock_state._set_value(Doors.LockState.LOCKED, measured=captured_at)  # pylint: disable=protected-access
                     else:
                         vehicle.doors.lock_state._set_value(Doors.LockState.UNLOCKED, measured=captured_at)  # pylint: disable=protected-access
                 else:
                     vehicle.doors.lock_state._set_value(None)  # pylint: disable=protected-access
 
-                if 'windowStatus' in exteriorStatus and exteriorStatus['windowStatus'] is not None:
-                    if 'windowStatusTimestmap' in exteriorStatus['windowStatus']:
-                        captured_at = datetime.fromtimestamp((exteriorStatus['windowStatus']['windowStatusTimestamp'] / 1000), tz=timezone.utc)
+                if 'windowStatus' in exterior_status and exterior_status['windowStatus'] is not None:
+                    if 'windowStatusTimestmap' in exterior_status['windowStatus']:
+                        captured_at = datetime.fromtimestamp((exterior_status['windowStatus']['windowStatusTimestamp'] / 1000), tz=timezone.utc)
                     seen_window_ids: set[str] = set()
                     all_windows_closed = True
-                    for window_id, window_status in exteriorStatus['windowStatus'].items():
+                    for window_id, window_status in exterior_status['windowStatus'].items():
                         if window_status == 'NOTAVAILABLE' or window_id == 'windowStatusTimestamp':
                             continue
                         seen_window_ids.add(window_id)
@@ -737,10 +742,10 @@ class Connector(BaseConnector):
                 for window_id in vehicle.windows.windows.keys() - seen_window_ids:
                     vehicle.windows.windows[window_id].enabled = False
 
-                if 'lightStatus' in exteriorStatus and exteriorStatus['lightStatus'] is not None:
+                if 'lightStatus' in exterior_status and exterior_status['lightStatus'] is not None:
                     all_lights_off = True
                     seen_light_ids: set[str] = set()
-                    for light_id, light_status in exteriorStatus['lightStatus'].items():
+                    for light_id, light_status in exterior_status['lightStatus'].items():
                         if light_status == 'NOTAVAILABLE':
                             continue
                         seen_light_ids.add(light_id)
@@ -770,8 +775,7 @@ class Connector(BaseConnector):
                     vehicle.lights.enabled = False
 
 
-                log_extra_keys(LOG_API, 'exteriorStatus', exteriorStatus, {'secure',
-                                                                           'doorStatus',
+                log_extra_keys(LOG_API, 'exteriorStatus', exterior_status, {'secure',
                                                                            'doorLockStatus',
                                                                            'windowStatus',
                                                                            'lightStatus'})
@@ -781,7 +785,7 @@ class Connector(BaseConnector):
                 vehicle.doors.enabled = False
                 vehicle.windows.open_state._set_value(None) # pylint: disable=protected-access
                 vehicle.windows.enabled = False
-                vehicle.liughts.light_state._set_value(None)
+                vehicle.lights.light_state._set_value(None) # pylint: disable=protected-access
                 vehicle.lights.enabled = False
 
             if isinstance(vehicle, VolkswagenNAElectricVehicle):
@@ -1441,7 +1445,6 @@ class Connector(BaseConnector):
             raise CommandError('UUID in object hierarchy missing')
         if 'command' not in command_arguments:
             raise CommandError('Command argument missing')
-        command_dict = {}
         command_str: Optional[str] = None
         if command_arguments['command'] == ClimatizationStartStopCommand.Command.START:
             command_str = 'start'
@@ -1477,10 +1480,9 @@ class Connector(BaseConnector):
         # Lock and Unlock doesn't work with 2020-2024 id.4's. I don't have another car to test with
         raise CommandError('LockUnlock not implemented')
 
-    def __do_spin(self, vehicle: VolkswagenNAVehicle, spin: str | None = None) -> None:
+    def __do_spin(self, vehicle: VolkswagenNAVehicle, spin: str | None = None) -> None: # pylint: disable=unused-private-member
         if not isinstance(vehicle, VolkswagenNAVehicle):
             raise CommandError('Object is not a VolkswagenNAVehicle')
-        command_dict = {}
         if spin is None:
             if self.active_config['spin'] is None or self.active_config['spin'] == '':
                 raise CommandError('S-PIN is missing, please add S-PIN to your configuration or .netrc file')
@@ -1491,7 +1493,7 @@ class Connector(BaseConnector):
             challenge_response: requests.Response = self.session.get(challenge_url)
             challenge_response_data = challenge_response.json()
             challenge_string = challenge_response_data['data']['challenge']
-            if (challenge_response_data['data']['remainingTries'] < 3):
+            if challenge_response_data['data']['remainingTries'] < 3:
                 raise CommandError(f'Skipping SPIN token fetching, only {challenge_response_data["data"]["remainingTries"]} tries remaining')
             verify_string = challenge_string + '.' + spin
             verify_hash = hashlib.sha512(verify_string.encode('ascii')).hexdigest()
@@ -1506,7 +1508,7 @@ class Connector(BaseConnector):
                 raise CommandError(f'Could not execute spin verify ({verify_response.status_code}: {verify_response.text})')
             else:
                 LOG.info('Spin verify command executed successfully')
-                vehicle.spin_token._set_value(verify_response.json()['data']['carnetVehicleToken'])
+                vehicle.spin_token._set_value(verify_response.json()['data']['carnetVehicleToken']) # pylint: disable=protected-access
                 return
         except requests.exceptions.ConnectionError as connection_error:
             raise CommandError(f'Connection error: {connection_error}.'
@@ -1604,7 +1606,7 @@ class Connector(BaseConnector):
         elif settings.target_level.enabled and settings.target_level.value is not None:
             setting_dict['targetSOCPercentage'] = round(settings.target_level.value / precision) * precision
 
-        url: stc = self.base_url + f'/ev/v1/vehicle/{vuuid}/charging/settings'
+        url: str = self.base_url + f'/ev/v1/vehicle/{vuuid}/charging/settings'
         try:
             settings_response: requests.Response = self.session.put(url, data=json.dumps(setting_dict), allow_redirects=True)
             if settings_response.status_code != requests.codes['ok']:

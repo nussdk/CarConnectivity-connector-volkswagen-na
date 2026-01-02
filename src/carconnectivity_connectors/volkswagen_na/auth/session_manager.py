@@ -129,7 +129,7 @@ class SessionManager():
 
         if service == Service.MY_VW:
             session = MyVWSession(session_user=session_user, token=token, metadata=metadata, cache=cache)
-        elif sevice == Service.MY_VW_CA:
+        elif service == Service.MY_VW_CA:
             session = MyVWSession(session_user=session_user, token=token, metadata=metadata, cache=cache, country='ca')
         else:
             raise ValueError(f"Unsupported service: {service}")

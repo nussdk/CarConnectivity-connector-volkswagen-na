@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 from enum import Enum, auto
 import time
 import logging
+from datetime import datetime, timezone
 import requests
 import jwt
-from datetime import datetime, timezone
 
 from oauthlib.common import UNICODE_ASCII_CHARACTER_SET, generate_nonce, generate_token
 from oauthlib.oauth2.rfc6749.parameters import parse_authorization_code_response, parse_token_response, prepare_grant_uri
@@ -344,7 +344,7 @@ class OpenIDSession(requests.Session):
         self.token = parse_token_response(token_response, scope=self.scope)
         return self.token
 
-    def request(  # noqa: C901
+    def request(  # noqa: C901, pylint: disable=arguments-differ
         self,
         method,
         url,
