@@ -23,12 +23,6 @@ class ConnectorUI(BaseConnectorUI):
                                                                template_folder=os.path.dirname(__file__) + '/templates')
         super().__init__(connector, blueprint=blueprint)
 
-    def get_nav_items(self) -> List[Dict[Literal['text', 'url', 'sublinks', 'divider'], Union[str, List]]]:
-        """
-        Generates a list of navigation items for the Volkswagen connector UI.
-        """
-        return super().get_nav_items()
-
     def get_title(self) -> str:
         """
         Returns the title of the connector.
