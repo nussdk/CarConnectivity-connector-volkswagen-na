@@ -72,11 +72,12 @@ class Connector(BaseConnector):
     Args:
         car_connectivity (CarConnectivity): An instance of CarConnectivity.
         config (Dict): Configuration dictionary containing connection details.
+        initialization (Optional[Dict]): Optional dictionary for initialization parameters.
     Attributes:
         max_age (Optional[int]): Maximum age for cached data in seconds.
     """
-    def __init__(self, connector_id: str, car_connectivity: CarConnectivity, config: Dict) -> None:
-        BaseConnector.__init__(self, connector_id=connector_id, car_connectivity=car_connectivity, config=config, log=LOG, api_log=LOG_API)
+    def __init__(self, connector_id: str, car_connectivity: CarConnectivity, config: Dict, initialization: Optional[Dict] = None) -> None:
+        BaseConnector.__init__(self, connector_id=connector_id, car_connectivity=car_connectivity, config=config, log=LOG, api_log=LOG_API, initialization=initialization)
 
         self._background_thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
@@ -301,7 +302,7 @@ class Connector(BaseConnector):
                         seen_vehicle_vins.add(vehicle_dict['vin'])
                         vehicle: Optional[VolkswagenNAVehicle] = garage.get_vehicle(vehicle_dict['vin'])  # pyright: ignore[reportAssignmentType]
                         if vehicle is None:
-                            vehicle = VolkswagenNAVehicle(vin=vehicle_dict['vin'], garage=garage, managing_connector=self)
+                            vehicle = VolkswagenNAVehicle(vin=vehicle_dict['vin'], garage=garage, managing_connector=self, initialization=garage.get_initialization(vehicle_dict['vin']))
                             garage.add_vehicle(vehicle_dict['vin'], vehicle)
 
                         if 'vehicleId' not in vehicle_dict or vehicle_dict['vehicleId'] is None:
@@ -336,7 +337,7 @@ class Connector(BaseConnector):
                                         if vehicle.capabilities.has_capability(capability_id):
                                             capability: Capability = vehicle.capabilities.get_capability(capability_id)
                                         else:
-                                            capability = Capability(capability_id=capability_id, capabilities=vehicle.capabilities)
+                                            capability = Capability(capability_id=capability_id, capabilities=vehicle.capabilities, initialization=vehicle.capabilities.get_initialization(capability_id))
                                             vehicle.capabilities.add_capability(capability_id, capability)
                                         if 'capabilityStatus' in service_dict and service_dict['capabilityStatus'] is not None:
                                             status = service_dict['capabilityStatus']
@@ -520,17 +521,17 @@ class Connector(BaseConnector):
                     drive: GenericDrive = vehicle.drives.drives[drive_id]
                 else:
                     if engine_type == GenericDrive.Type.ELECTRIC:
-                        drive = ElectricDrive(drive_id=drive_id, drives=vehicle.drives)
+                        drive = ElectricDrive(drive_id=drive_id, drives=vehicle.drives, initialization=vehicle.drives.get_initialization(drive_id))
                     elif engine_type == GenericDrive.Type.DIESEL:
-                        drive = DieselDrive(drive_id=drive_id, drives=vehicle.drives)
+                        drive = DieselDrive(drive_id=drive_id, drives=vehicle.drives, initialization=vehicle.drives.get_initialization(drive_id))
                     elif engine_type in [GenericDrive.Type.FUEL,
                                          GenericDrive.Type.GASOLINE,
                                          GenericDrive.Type.PETROL,
                                          GenericDrive.Type.CNG,
                                          GenericDrive.Type.LPG]:
-                        drive = CombustionDrive(drive_id=drive_id, drives=vehicle.drives)
+                        drive = CombustionDrive(drive_id=drive_id, drives=vehicle.drives, initialization=vehicle.drives.get_initialization(drive_id))
                     else:
-                        drive = GenericDrive(drive_id=drive_id, drives=vehicle.drives)
+                        drive = GenericDrive(drive_id=drive_id, drives=vehicle.drives, initialization=vehicle.drives.get_initialization(drive_id))
                     drive.type._set_value(engine_type)  # pylint: disable=protected-access
                     vehicle.drives.add_drive(drive)
                 if 'cruiseRange' in power_status and power_status['cruiseRange'] is not None:
@@ -664,7 +665,7 @@ class Connector(BaseConnector):
                         if door_id in vehicle.doors.doors:
                             door: Doors.Door = vehicle.doors.doors[door_id]
                         else:
-                            door = Doors.Door(door_id=door_id, doors=vehicle.doors)
+                            door = Doors.Door(door_id=door_id, doors=vehicle.doors, initialization=vehicle.doors.get_initialization(door_id))
                             vehicle.doors.doors[door_id] = door
                         if door_status == 'CLOSED':
                             door.open_state._set_value(Doors.OpenState.CLOSED, measured=captured_at)
@@ -688,7 +689,7 @@ class Connector(BaseConnector):
                         if door_id in vehicle.doors.doors:
                             door: Doors.Door = vehicle.doors.doors[door_id]
                         else:
-                            door = Doors.Door(door_id=door_id, doors=vehicle.doors)
+                            door = Doors.Door(door_id=door_id, doors=vehicle.doors, initialization=vehicle.doors.get_initialization(door_id))
                             vehicle.doors.doors[door_id] = door
                         if door_status == 'LOCKED':
                             door.lock_state._set_value(Doors.LockState.LOCKED, measured=captured_at)
@@ -718,7 +719,7 @@ class Connector(BaseConnector):
                         if window_id in vehicle.windows.windows:
                             window: Windows.Window = vehicle.windows.windows[window_id]
                         else:
-                            window = Windows.Window(window_id=window_id, windows=vehicle.windows)
+                            window = Windows.Window(window_id=window_id, windows=vehicle.windows, initialization=vehicle.windows.get_initialization(window_id))
                             vehicle.windows.windows[window_id] = window
                         if window_status == 'CLOSED':
                             window.open_state._set_value(Windows.OpenState.CLOSED, measured=captured_at)  # pylint: disable=protected-access
@@ -752,7 +753,7 @@ class Connector(BaseConnector):
                         if light_id in vehicle.lights.lights:
                             light: Lights.Light = vehicle.lights.lights[light_id]
                         else:
-                            light: Lights.Light = Lights.Light(light_id=light_id, lights=vehicle.lights)
+                            light: Lights.Light = Lights.Light(light_id=light_id, lights=vehicle.lights, initialization=vehicle.lights.get_initialization(light_id))
                             vehicle.lights.lights[light_id] = light
                         if light_status == 'ON':
                             all_lights_off = False
@@ -999,7 +1000,7 @@ class Connector(BaseConnector):
                                     if window_id in vehicle.window_heatings.windows:
                                         window: WindowHeatings.WindowHeating = vehicle.window_heatings.windows[window_id]
                                     else:
-                                        window = WindowHeatings.WindowHeating(window_id=window_id, window_heatings=vehicle.window_heatings)
+                                        window = WindowHeatings.WindowHeating(window_id=window_id, window_heatings=vehicle.window_heatings, initialization=vehicle.window_heatings.get_initialization(window_id))
                                         vehicle.window_heatings.windows[window_id] = window
                                     if 'windowHeatingState' in window_heating and window_heating['windowHeatingState'] is not None:
                                         if window_heating['windowHeatingState'] in [item.value for item in WindowHeatings.HeatingState]:
