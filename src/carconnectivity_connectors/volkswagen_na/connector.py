@@ -649,7 +649,8 @@ class Connector(BaseConnector):
                 log_extra_keys(LOG_API, 'measurements', data['measurements'], {'fuelLevelStatus', 'odometerStatus', 'temperatureOutsideStatus',
                                                                                'temperatureBatteryStatus', 'rangeStatus'})
             else:
-                vehicle.odometer._set_value(None)  # pylint: disable=protected-access
+                LOG.warning('No measurements data available for vehicle %s', vin)
+                LOG.debug('Full data dump: %s', json.dumps(data))
 
             if 'exteriorStatus' in data and data['exteriorStatus'] is not None:
                 exterior_status = data['exteriorStatus']
