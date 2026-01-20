@@ -808,35 +808,35 @@ class Connector(BaseConnector):
                     start_stop_command._add_on_set_hook(self.__on_air_conditioning_start_stop)  # pylint: disable=protected-access
                     start_stop_command.enabled = True
                     vehicle.climatization.commands.add_command(start_stop_command)
-                    if 'climateStatusReport' in climate_data and climate_data['climateStatusReport'] is not None:
-                        climatization_status = climate_data['climateStatusReport']
-                        if 'carCapturedTimestamp' not in climatization_status or climatization_status['carCapturedTimestamp'] is None:
-                            raise APIError('Could not fetch vehicle status, carCapturedTimestamp missing')
-                        captured_at: datetime = datetime.fromtimestamp((climatization_status['carCapturedTimestamp'] / 1000), tz=timezone.utc)
-                        if 'climateStatusInd' in climatization_status and climatization_status['climateStatusInd'] is not None:
-                            if climatization_status['climateStatusInd'] in [item.value for item in VolkswagenClimatization.ClimatizationState]:
-                                climatization_state: VolkswagenClimatization.ClimatizationState = \
-                                    VolkswagenClimatization.ClimatizationState(climatization_status['climateStatusInd'])
-                            else:
-                                LOG_API.info('Unknown climatization state %s not in %s', climatization_status['climateStatusInd'],
-                                             str(VolkswagenClimatization.ClimatizationState))
-                                climatization_state = VolkswagenClimatization.ClimatizationState.UNKNOWN
-                            vehicle.climatization.state._set_value(value=climatization_state, measured=captured_at)  # pylint: disable=protected-access
+                if 'climateStatusReport' in climate_data and climate_data['climateStatusReport'] is not None:
+                    climatization_status = climate_data['climateStatusReport']
+                    if 'carCapturedTimestamp' not in climatization_status or climatization_status['carCapturedTimestamp'] is None:
+                        raise APIError('Could not fetch vehicle status, carCapturedTimestamp missing')
+                    captured_at: datetime = datetime.fromtimestamp((climatization_status['carCapturedTimestamp'] / 1000), tz=timezone.utc)
+                    if 'climateStatusInd' in climatization_status and climatization_status['climateStatusInd'] is not None:
+                        if climatization_status['climateStatusInd'] in [item.value for item in VolkswagenClimatization.ClimatizationState]:
+                            climatization_state: VolkswagenClimatization.ClimatizationState = \
+                                VolkswagenClimatization.ClimatizationState(climatization_status['climateStatusInd'])
                         else:
-                            vehicle.climatization.state._set_value(None, measured=captured_at)  # pylint: disable=protected-access
-                        if 'remainingclimatizationTimeMin' in climatization_status and climatization_status['remainingclimatizationTimeMin'] is not None:
-                            remaining_duration: timedelta = timedelta(minutes=climatization_status['remainingclimatizationTimeMin'])
-                            estimated_date_reached: datetime = captured_at + remaining_duration
-                            estimated_date_reached = estimated_date_reached.replace(second=0, microsecond=0)
-                            # pylint: disable-next=protected-access
-                            vehicle.climatization.estimated_date_reached._set_value(value=estimated_date_reached, measured=captured_at)
-                        else:
-                            vehicle.climatization.estimated_date_reached._set_value(None, measured=captured_at)  # pylint: disable=protected-access
-                        log_extra_keys(LOG_API, 'climateStatusReport', climatization_status, {'carCapturedTimestamp', 'climateStatusInd',
-                                                                                                  'remainingclimatizationTimeMin'})
+                            LOG_API.info('Unknown climatization state %s not in %s', climatization_status['climateStatusInd'],
+                                            str(VolkswagenClimatization.ClimatizationState))
+                            climatization_state = VolkswagenClimatization.ClimatizationState.UNKNOWN
+                        vehicle.climatization.state._set_value(value=climatization_state, measured=captured_at)  # pylint: disable=protected-access
                     else:
-                        vehicle.climatization.state._set_value(None)  # pylint: disable=protected-access
-                        vehicle.climatization.estimated_date_reached._set_value(None)  # pylint: disable=protected-access
+                        vehicle.climatization.state._set_value(None, measured=captured_at)  # pylint: disable=protected-access
+                    if 'remainingclimatizationTimeMin' in climatization_status and climatization_status['remainingclimatizationTimeMin'] is not None:
+                        remaining_duration: timedelta = timedelta(minutes=climatization_status['remainingclimatizationTimeMin'])
+                        estimated_date_reached: datetime = captured_at + remaining_duration
+                        estimated_date_reached = estimated_date_reached.replace(second=0, microsecond=0)
+                        # pylint: disable-next=protected-access
+                        vehicle.climatization.estimated_date_reached._set_value(value=estimated_date_reached, measured=captured_at)
+                    else:
+                        vehicle.climatization.estimated_date_reached._set_value(None, measured=captured_at)  # pylint: disable=protected-access
+                    log_extra_keys(LOG_API, 'climateStatusReport', climatization_status, {'carCapturedTimestamp', 'climateStatusInd',
+                                                                                                'remainingclimatizationTimeMin'})
+                else:
+                    vehicle.climatization.state._set_value(None)  # pylint: disable=protected-access
+                    vehicle.climatization.estimated_date_reached._set_value(None)  # pylint: disable=protected-access
                 if 'climateSettings' in climate_data and climate_data['climateSettings'] is not None:
                     climatization_settings = climate_data['climateSettings']
                     if 'carCapturedTimestamp' not in climatization_settings or climatization_settings['carCapturedTimestamp'] is None:
@@ -965,12 +965,11 @@ class Connector(BaseConnector):
                     else:
                         vehicle.climatization.settings.heater_source._set_value(None, measured=captured_at)  # pylint: disable=protected-access
                     log_extra_keys(LOG_API, 'climatizationSettings', climatization_settings, {'carCapturedTimestamp',
-                                                                                              'unitInCar',
-                                                                                              'targetTemperature_C',
-                                                                                              'targetTemperature_F',
                                                                                               'climatizationWithoutExternalPower',
                                                                                               'climatizationAtUnlock',
                                                                                               'windowHeatingEnabled',
+                                                                                              'zoneFrontLeftEnabled',
+                                                                                              'zoneFrontRightEnabled'
                                                                                               'zoneRearLeftEnabled',
                                                                                               'zoneRearRightEnabled',
                                                                                               'heaterSource'})
