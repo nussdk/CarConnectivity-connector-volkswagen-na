@@ -43,7 +43,6 @@ Changelog = "https://github.com/zackcornelius/CarConnectivity-connector-volkswag
 [dependency-groups]
 dev = [
     "pre-commit",
-    "pylint",
     "bandit",
 ]
 ui = [
