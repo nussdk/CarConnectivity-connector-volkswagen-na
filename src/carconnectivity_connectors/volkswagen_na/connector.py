@@ -256,7 +256,6 @@ class Connector(BaseConnector):
         This method calls the `fetch_vehicles` method to retrieve vehicle data.
         """
         self.fetch_vehicles()
-        self.car_connectivity.transaction_end()
 
     def update_vehicles(self) -> None:
         """
@@ -277,6 +276,7 @@ class Connector(BaseConnector):
                 self.fetch_vehicle_status(vehicle_to_update)
 
                 self.decide_state(vehicle_to_update)
+        self.car_connectivity.transaction_end()
 
     def fetch_vehicles(self) -> None:
         """
