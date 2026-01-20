@@ -1,4 +1,5 @@
 """Module implementing the SessionManager class."""
+
 from __future__ import annotations
 from typing import TYPE_CHECKING, Tuple
 
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
 LOG = logging.getLogger("carconnectivity.connectors.volkswagen.auth")
 
 
-class SessionUser():
+class SessionUser:
     """
     A class to represent a session user with a username and password.
 
@@ -33,12 +34,13 @@ class SessionUser():
     __str__():
         Returns a string representation of the session user in the format 'username:password'.
     """
+
     def __init__(self, username: str, password: str) -> None:
         self.username: str = username
         self.password: str = password
 
     def __str__(self) -> str:
-        return f'{self.username}:{self.password}'
+        return f"{self.username}:{self.password}"
 
 
 class Service(Enum):
@@ -51,18 +53,20 @@ class Service(Enum):
     Methods:
         __str__() -> str: Returns the string representation of the service.
     """
-    MY_VW = 'MyVW'
-    MY_VW_CA = 'MyVWCA'
+
+    MY_VW = "MyVW"
+    MY_VW_CA = "MyVWCA"
 
     def __str__(self) -> str:
         return self.value
 
 
-class SessionManager():
+class SessionManager:
     """
     Manages sessions for different services and users, handling token storage and caching.
     """
-    def __init__(self, tokenstore: Dict[str, Any], cache:  Dict[str, Any]) -> None:
+
+    def __init__(self, tokenstore: Dict[str, Any], cache: Dict[str, Any]) -> None:
         self.tokenstore: Dict[str, Any] = tokenstore
         self.cache: Dict[str, Any] = cache
         self.sessions: Dict[Tuple[Service, SessionUser], VWWebSession] = {}
@@ -94,7 +98,7 @@ class SessionManager():
         Returns:
             str: A unique identifier string.
         """
-        return 'CarConnectivity-connector-volkswagen-na:' + SessionManager.generate_hash(service, session_user)
+        return "CarConnectivity-connector-volkswagen-na:" + SessionManager.generate_hash(service, session_user)
 
     def get_session(self, service: Service, session_user: SessionUser) -> VWWebSession:
         """
@@ -119,18 +123,18 @@ class SessionManager():
         metadata = {}
 
         if identifier in self.tokenstore:
-            if 'token' in self.tokenstore[identifier]:
-                LOG.info('Reusing tokens from previous session')
-                token = self.tokenstore[identifier]['token']
-            if 'metadata' in self.tokenstore[identifier]:
-                metadata = self.tokenstore[identifier]['metadata']
+            if "token" in self.tokenstore[identifier]:
+                LOG.info("Reusing tokens from previous session")
+                token = self.tokenstore[identifier]["token"]
+            if "metadata" in self.tokenstore[identifier]:
+                metadata = self.tokenstore[identifier]["metadata"]
         if identifier in self.cache:
             cache = self.cache[identifier]
 
         if service == Service.MY_VW:
             session = MyVWSession(session_user=session_user, token=token, metadata=metadata, cache=cache)
         elif service == Service.MY_VW_CA:
-            session = MyVWSession(session_user=session_user, token=token, metadata=metadata, cache=cache, country='ca')
+            session = MyVWSession(session_user=session_user, token=token, metadata=metadata, cache=cache, country="ca")
         else:
             raise ValueError(f"Unsupported service: {service}")
 
@@ -148,6 +152,6 @@ class SessionManager():
         for (service, user), session in self.sessions.items():
             identifier: str = SessionManager.generate_identifier(service, user)
             self.tokenstore[identifier] = {}
-            self.tokenstore[identifier]['token'] = session.token
-            self.tokenstore[identifier]['metadata'] = session.metadata
+            self.tokenstore[identifier]["token"] = session.token
+            self.tokenstore[identifier]["metadata"] = session.metadata
             self.cache[identifier] = session.cache
