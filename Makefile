@@ -12,6 +12,12 @@ lint:
 	@echo "\n${BLUE}Running Bandit against source files...${NC}\n"
 	@bandit -c pyproject.toml -r .
 
+lint-new:
+	@python3 -m venv .venv
+	@.venv/bin/python -m pip install pre-commit
+	@echo "\n${BLUE}Running pre-commit against source and test files...${NC}\n"
+	@.venv/bin/pre-commit run --all-files
+
 clean:
 	rm -rf .pytest_cache .coverage .pytest_cache coverage.xml coverage_html_report
 
