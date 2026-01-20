@@ -1,6 +1,7 @@
 """
 Module for climatization for volkswagen vehicles.
 """
+
 from __future__ import annotations
 from typing import TYPE_CHECKING, Dict
 
@@ -21,6 +22,7 @@ class VolkswagenClimatization(Climatization):  # pylint: disable=too-many-instan
     This class extends the Climatization class and includes an enumeration of various
     climatization states specific to Volkswagen vehicles.
     """
+
     def __init__(self, vehicle: GenericVehicle | None = None, origin: Optional[Climatization] = None, initialization: Optional[Dict] = None) -> None:
         if origin is not None:
             super().__init__(origin=origin, initialization=initialization)
@@ -28,19 +30,30 @@ class VolkswagenClimatization(Climatization):  # pylint: disable=too-many-instan
                 self.settings: Climatization.Settings = VolkswagenClimatization.Settings(parent=self, origin=origin.settings, initialization=initialization)
         else:
             super().__init__(vehicle=vehicle, initialization=initialization)
-            self.settings: Climatization.Settings = VolkswagenClimatization.Settings(parent=self, initialization=self.get_initialization('settings'))
+            self.settings: Climatization.Settings = VolkswagenClimatization.Settings(parent=self, initialization=self.get_initialization("settings"))
 
     class Settings(Climatization.Settings):
         """
         This class represents the settings for a skoda car climatiation.
         """
-        def __init__(self, parent: Optional[GenericObject] = None, origin: Optional[Climatization.Settings] = None, initialization: Optional[Dict] = None) -> None:
+
+        def __init__(
+            self, parent: Optional[GenericObject] = None, origin: Optional[Climatization.Settings] = None, initialization: Optional[Dict] = None
+        ) -> None:
             if origin is not None:
                 super().__init__(parent=parent, origin=origin, initialization=initialization)
             else:
                 super().__init__(parent=parent, initialization=initialization)
             self.unit_in_car: Optional[Temperature] = None
-            self.front_zone_left_enabled: BooleanAttribute = BooleanAttribute(parent=self, name='front_zone_left_enabled', tags={'connector_custom'}, initialization=self.get_initialization('front_zone_left_enabled'))
-            self.front_zone_right_enabled: BooleanAttribute = BooleanAttribute(parent=self, name='front_zone_right_enabled', tags={'connector_custom'}, initialization=self.get_initialization('front_zone_right_enabled'))
-            self.rear_zone_left_enabled: BooleanAttribute = BooleanAttribute(parent=self, name='rear_zone_left_enabled', tags={'connector_custom'}, initialization=self.get_initialization('rear_zone_left_enabled'))
-            self.rear_zone_right_enabled: BooleanAttribute = BooleanAttribute(parent=self, name='rear_zone_right_enabled', tags={'connector_custom'}, initialization=self.get_initialization('rear_zone_right_enabled'))
+            self.front_zone_left_enabled: BooleanAttribute = BooleanAttribute(
+                parent=self, name="front_zone_left_enabled", tags={"connector_custom"}, initialization=self.get_initialization("front_zone_left_enabled")
+            )
+            self.front_zone_right_enabled: BooleanAttribute = BooleanAttribute(
+                parent=self, name="front_zone_right_enabled", tags={"connector_custom"}, initialization=self.get_initialization("front_zone_right_enabled")
+            )
+            self.rear_zone_left_enabled: BooleanAttribute = BooleanAttribute(
+                parent=self, name="rear_zone_left_enabled", tags={"connector_custom"}, initialization=self.get_initialization("rear_zone_left_enabled")
+            )
+            self.rear_zone_right_enabled: BooleanAttribute = BooleanAttribute(
+                parent=self, name="rear_zone_right_enabled", tags={"connector_custom"}, initialization=self.get_initialization("rear_zone_right_enabled")
+            )
