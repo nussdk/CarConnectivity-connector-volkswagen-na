@@ -809,52 +809,52 @@ class Connector(BaseConnector):
                     start_stop_command.enabled = True
                     vehicle.climatization.commands.add_command(start_stop_command)
                     if 'climateStatusReport' in climate_data and climate_data['climateStatusReport'] is not None:
-                        climatisation_status = climate_data['climateStatusReport']
-                        if 'carCapturedTimestamp' not in climatisation_status or climatisation_status['carCapturedTimestamp'] is None:
+                        climatization_status = climate_data['climateStatusReport']
+                        if 'carCapturedTimestamp' not in climatization_status or climatization_status['carCapturedTimestamp'] is None:
                             raise APIError('Could not fetch vehicle status, carCapturedTimestamp missing')
-                        captured_at: datetime = datetime.fromtimestamp((climatisation_status['carCapturedTimestamp'] / 1000), tz=timezone.utc)
-                        if 'climateStatusInd' in climatisation_status and climatisation_status['climateStatusInd'] is not None:
-                            if climatisation_status['climateStatusInd'] in [item.value for item in VolkswagenClimatization.ClimatizationState]:
+                        captured_at: datetime = datetime.fromtimestamp((climatization_status['carCapturedTimestamp'] / 1000), tz=timezone.utc)
+                        if 'climateStatusInd' in climatization_status and climatization_status['climateStatusInd'] is not None:
+                            if climatization_status['climateStatusInd'] in [item.value for item in VolkswagenClimatization.ClimatizationState]:
                                 climatization_state: VolkswagenClimatization.ClimatizationState = \
-                                    VolkswagenClimatization.ClimatizationState(climatisation_status['climateStatusInd'])
+                                    VolkswagenClimatization.ClimatizationState(climatization_status['climateStatusInd'])
                             else:
-                                LOG_API.info('Unknown climatization state %s not in %s', climatisation_status['climateStatusInd'],
+                                LOG_API.info('Unknown climatization state %s not in %s', climatization_status['climateStatusInd'],
                                              str(VolkswagenClimatization.ClimatizationState))
                                 climatization_state = VolkswagenClimatization.ClimatizationState.UNKNOWN
                             vehicle.climatization.state._set_value(value=climatization_state, measured=captured_at)  # pylint: disable=protected-access
                         else:
                             vehicle.climatization.state._set_value(None, measured=captured_at)  # pylint: disable=protected-access
-                        if 'remainingClimatisationTimeMin' in climatisation_status and climatisation_status['remainingClimatisationTimeMin'] is not None:
-                            remaining_duration: timedelta = timedelta(minutes=climatisation_status['remainingClimatisationTimeMin'])
+                        if 'remainingclimatizationTimeMin' in climatization_status and climatization_status['remainingclimatizationTimeMin'] is not None:
+                            remaining_duration: timedelta = timedelta(minutes=climatization_status['remainingclimatizationTimeMin'])
                             estimated_date_reached: datetime = captured_at + remaining_duration
                             estimated_date_reached = estimated_date_reached.replace(second=0, microsecond=0)
                             # pylint: disable-next=protected-access
                             vehicle.climatization.estimated_date_reached._set_value(value=estimated_date_reached, measured=captured_at)
                         else:
                             vehicle.climatization.estimated_date_reached._set_value(None, measured=captured_at)  # pylint: disable=protected-access
-                        log_extra_keys(LOG_API, 'climateStatusReport', climatisation_status, {'carCapturedTimestamp', 'climateStatusInd',
-                                                                                                  'remainingClimatisationTimeMin'})
+                        log_extra_keys(LOG_API, 'climateStatusReport', climatization_status, {'carCapturedTimestamp', 'climateStatusInd',
+                                                                                                  'remainingclimatizationTimeMin'})
                     else:
                         vehicle.climatization.state._set_value(None)  # pylint: disable=protected-access
                         vehicle.climatization.estimated_date_reached._set_value(None)  # pylint: disable=protected-access
                 if 'climateSettings' in climate_data and climate_data['climateSettings'] is not None:
-                    climatisation_settings = climate_data['climateSettings']
-                    if 'carCapturedTimestamp' not in climatisation_settings or climatisation_settings['carCapturedTimestamp'] is None:
+                    climatization_settings = climate_data['climateSettings']
+                    if 'carCapturedTimestamp' not in climatization_settings or climatization_settings['carCapturedTimestamp'] is None:
                         raise APIError('Could not fetch vehicle status, carCapturedTimestamp missing')
-                    captured_at: datetime = datetime.fromtimestamp((climatisation_settings['carCapturedTimestamp'] / 1000), tz=timezone.utc)
+                    captured_at: datetime = datetime.fromtimestamp((climatization_settings['carCapturedTimestamp'] / 1000), tz=timezone.utc)
                     preferred_unit: Temperature = Temperature.C
                     precision: float = 0.5
-                    if 'targetTemperature' in climatisation_settings and climatisation_settings['targetTemperature'] is not None:
-                        if 'unit' in climatisation_settings['targetTemperature'] and climatisation_settings['targetTemperature']['unit'] is not None:
-                            if climatisation_settings['targetTemperature']['unit'] == 'fahrenheit':
+                    if 'targetTemperature' in climatization_settings and climatization_settings['targetTemperature'] is not None:
+                        if 'unit' in climatization_settings['targetTemperature'] and climatization_settings['targetTemperature']['unit'] is not None:
+                            if climatization_settings['targetTemperature']['unit'] == 'fahrenheit':
                                 preferred_unit = Temperature.F
                                 vehicle.climatization.settings.unit_in_car = Temperature.F
-                            elif climatisation_settings['targetTemperature']['unit'] == 'celsius':
+                            elif climatization_settings['targetTemperature']['unit'] == 'celsius':
                                 preferred_unit = Temperature.C
                                 vehicle.climatization.settings.unit_in_car = Temperature.C
                             else:
-                                LOG_API.info('Unknown unitInCar %s', climatisation_settings['targetTemperature']['unit'])
-                        target_temperature: float = climatisation_settings['targetTemperature']['temperature']
+                                LOG_API.info('Unknown unitInCar %s', climatization_settings['targetTemperature']['unit'])
+                        target_temperature: float = climatization_settings['targetTemperature']['temperature']
                         if preferred_unit == Temperature.C:
                             min_temperature: Optional[float] = 16
                             max_temperature: Optional[float] = 29.5
@@ -873,10 +873,10 @@ class Connector(BaseConnector):
                         # pylint: disable-next=protected-access
                         vehicle.climatization.settings.target_temperature._add_on_set_hook(self.__on_air_conditioning_settings_change)
                         vehicle.climatization.settings.target_temperature._is_changeable = True  # pylint: disable=protected-access
-                    if 'climatisationWithoutExternalPower' in climatisation_settings \
-                            and climatisation_settings['climatisationWithoutExternalPower'] is not None:
+                    if 'climatizationWithoutExternalPower' in climatization_settings \
+                            and climatization_settings['climatizationWithoutExternalPower'] is not None:
                         vehicle.climatization.settings.climatization_without_external_power._set_value(  # pylint: disable=protected-access
-                            climatisation_settings['climatisationWithoutExternalPower'], measured=captured_at)
+                            climatization_settings['climatizationWithoutExternalPower'], measured=captured_at)
                         # pylint: disable-next=protected-access
                         vehicle.climatization.settings.climatization_without_external_power._add_on_set_hook(self.__on_air_conditioning_settings_change)
                         vehicle.climatization.settings.climatization_without_external_power._is_changeable = True  # pylint: disable=protected-access
@@ -884,57 +884,57 @@ class Connector(BaseConnector):
                         # pylint: disable-next=protected-access
                         vehicle.climatization.settings.climatization_without_external_power._set_value(None, measured=captured_at)
 
-                    if 'climatizationElementSettings' in climatisation_settings and climatisation_settings['climatizationElementSettings'] is not None:
-                        climatisation_settings = climatisation_settings['climatizationElementSettings']
+                    if 'climatizationElementSettings' in climatization_settings and climatization_settings['climatizationElementSettings'] is not None:
+                        climatization_settings = climatization_settings['climatizationElementSettings']
 
-                    if 'climatizationAtUnlock' in climatisation_settings and climatisation_settings['climatizationAtUnlock'] is not None:
+                    if 'climatizationAtUnlock' in climatization_settings and climatization_settings['climatizationAtUnlock'] is not None:
                         vehicle.climatization.settings.climatization_at_unlock._set_value(  # pylint: disable=protected-access
-                            climatisation_settings['climatizationAtUnlock'], measured=captured_at)
+                            climatization_settings['climatizationAtUnlock'], measured=captured_at)
                         # pylint: disable-next=protected-access
                         vehicle.climatization.settings.climatization_at_unlock._add_on_set_hook(self.__on_air_conditioning_settings_change)
                         vehicle.climatization.settings.climatization_at_unlock._is_changeable = True  # pylint: disable=protected-access
                     else:
                         # pylint: disable-next=protected-access
                         vehicle.climatization.settings.climatization_at_unlock._set_value(None, measured=captured_at)
-                    if 'windowHeatingEnabled' in climatisation_settings and climatisation_settings['windowHeatingEnabled'] is not None:
+                    if 'windowHeatingEnabled' in climatization_settings and climatization_settings['windowHeatingEnabled'] is not None:
                         vehicle.climatization.settings.window_heating._set_value(  # pylint: disable=protected-access
-                            climatisation_settings['windowHeatingEnabled'], measured=captured_at)
+                            climatization_settings['windowHeatingEnabled'], measured=captured_at)
                     # pylint: disable-next=protected-access
                         vehicle.climatization.settings.window_heating._add_on_set_hook(self.__on_air_conditioning_settings_change)
                         vehicle.climatization.settings.window_heating._is_changeable = True  # pylint: disable=protected-access
                     else:
                         # pylint: disable-next=protected-access
                         vehicle.climatization.settings.window_heating._set_value(None, measured=captured_at)
-                    if 'zoneFrontLeftEnabled' in climatisation_settings and climatisation_settings['zoneFrontLeftEnabled'] is not None:
+                    if 'zoneFrontLeftEnabled' in climatization_settings and climatization_settings['zoneFrontLeftEnabled'] is not None:
                         vehicle.climatization.settings.front_zone_left_enabled._set_value(  # pylint: disable=protected-access
-                            climatisation_settings['zoneFrontLeftEnabled'], measured=captured_at)
+                            climatization_settings['zoneFrontLeftEnabled'], measured=captured_at)
                         # pylint: disable-next=protected-access
                         vehicle.climatization.settings.front_zone_left_enabled._add_on_set_hook(self.__on_air_conditioning_settings_change)
                         vehicle.climatization.settings.front_zone_left_enabled._is_changeable = True  # pylint: disable=protected-access
                     else:
                         # pylint: disable-next=protected-access
                         vehicle.climatization.settings.front_zone_left_enabled._set_value(None, measured=captured_at)
-                    if 'zoneFrontRightEnabled' in climatisation_settings and climatisation_settings['zoneFrontRightEnabled'] is not None:
+                    if 'zoneFrontRightEnabled' in climatization_settings and climatization_settings['zoneFrontRightEnabled'] is not None:
                         vehicle.climatization.settings.front_zone_right_enabled._set_value(  # pylint: disable=protected-access
-                            climatisation_settings['zoneFrontRightEnabled'], measured=captured_at)
+                            climatization_settings['zoneFrontRightEnabled'], measured=captured_at)
                         # pylint: disable-next=protected-access
                         vehicle.climatization.settings.front_zone_right_enabled._add_on_set_hook(self.__on_air_conditioning_settings_change)
                         vehicle.climatization.settings.front_zone_right_enabled._is_changeable = True  # pylint: disable=protected-access
                     else:
                         # pylint: disable-next=protected-access
                         vehicle.climatization.settings.front_zone_right_enabled._set_value(None, measured=captured_at)
-                    if 'zoneRearLeftEnabled' in climatisation_settings and climatisation_settings['zoneRearLeftEnabled'] is not None:
+                    if 'zoneRearLeftEnabled' in climatization_settings and climatization_settings['zoneRearLeftEnabled'] is not None:
                         vehicle.climatization.settings.rear_zone_left_enabled._set_value(  # pylint: disable=protected-access
-                            climatisation_settings['zoneRearLeftEnabled'], measured=captured_at)
+                            climatization_settings['zoneRearLeftEnabled'], measured=captured_at)
                         # pylint: disable-next=protected-access
                         vehicle.climatization.settings.rear_zone_left_enabled._add_on_set_hook(self.__on_air_conditioning_settings_change)
                         vehicle.climatization.settings.rear_zone_left_enabled._is_changeable = True  # pylint: disable=protected-access
                     else:
                         # pylint: disable-next=protected-access
                         vehicle.climatization.settings.rear_zone_left_enabled._set_value(None, measured=captured_at)
-                    if 'zoneRearRightEnabled' in climatisation_settings and climatisation_settings['zoneRearRightEnabled'] is not None:
+                    if 'zoneRearRightEnabled' in climatization_settings and climatization_settings['zoneRearRightEnabled'] is not None:
                         vehicle.climatization.settings.rear_zone_right_enabled._set_value(  # pylint: disable=protected-access
-                            climatisation_settings['zoneRearRightEnabled'], measured=captured_at)
+                            climatization_settings['zoneRearRightEnabled'], measured=captured_at)
                         # pylint: disable-next=protected-access
                         vehicle.climatization.settings.rear_zone_right_enabled._add_on_set_hook(self.__on_air_conditioning_settings_change)
                         vehicle.climatization.settings.rear_zone_right_enabled._is_changeable = True  # pylint: disable=protected-access
@@ -954,21 +954,21 @@ class Connector(BaseConnector):
                             vehicle.climatization.settings.seat_heating._set_value(False, measured=captured_at)  # pylint: disable=protected-access
                     else:
                         vehicle.climatization.settings.seat_heating._set_value(None, measured=captured_at)  # pylint: disable=protected-access
-                    if 'heaterSource' in climatisation_settings and climatisation_settings['heaterSource'] is not None:
-                        if climatisation_settings['heaterSource'] in [item.value for item in Climatization.Settings.HeaterSource]:
+                    if 'heaterSource' in climatization_settings and climatization_settings['heaterSource'] is not None:
+                        if climatization_settings['heaterSource'] in [item.value for item in Climatization.Settings.HeaterSource]:
                             vehicle.climatization.settings.heater_source._set_value(  # pylint: disable=protected-access
-                                Climatization.Settings.HeaterSource(climatisation_settings['heaterSource']), measured=captured_at)
+                                Climatization.Settings.HeaterSource(climatization_settings['heaterSource']), measured=captured_at)
                         else:
-                            LOG_API.info('Unknown heater source %s', climatisation_settings['heaterSource'])
+                            LOG_API.info('Unknown heater source %s', climatization_settings['heaterSource'])
                             # pylint: disable-next=protected-access
                             vehicle.climatization.settings.heater_source._set_value(Climatization.Settings.HeaterSource.UNKNOWN, measured=captured_at)
                     else:
                         vehicle.climatization.settings.heater_source._set_value(None, measured=captured_at)  # pylint: disable=protected-access
-                    log_extra_keys(LOG_API, 'climatisationSettings', climatisation_settings, {'carCapturedTimestamp',
+                    log_extra_keys(LOG_API, 'climatizationSettings', climatization_settings, {'carCapturedTimestamp',
                                                                                               'unitInCar',
                                                                                               'targetTemperature_C',
                                                                                               'targetTemperature_F',
-                                                                                              'climatisationWithoutExternalPower',
+                                                                                              'climatizationWithoutExternalPower',
                                                                                               'climatizationAtUnlock',
                                                                                               'windowHeatingEnabled',
                                                                                               'zoneRearLeftEnabled',
@@ -1038,7 +1038,7 @@ class Connector(BaseConnector):
                             vehicle.window_heatings.commands.add_command(start_stop_command)
                         log_extra_keys(LOG_API, 'windowHeatingStatus', window_heating_status, {'carCapturedTimestamp', 'windowHeatingStatus'})
 
-                log_extra_keys(LOG_API, 'climatisation', climate_data, {'climatisationStatus', 'climatisationSettings', 'windowHeatingStatus'})
+                log_extra_keys(LOG_API, 'climatization', climate_data, {'climatizationStatus', 'climatizationSettings', 'windowHeatingStatus'})
 
             if isinstance(vehicle, VolkswagenNAElectricVehicle):
                 if vehicle.charging is not None and vehicle.charging.commands is not None \
@@ -1284,7 +1284,7 @@ class Connector(BaseConnector):
                                 vehicle.is_active._set_value(None)  # pylint: disable=protected-access
                             log_extra_keys(LOG_API, 'connectionState', readiness_status['connectionState'], {'isOnline', 'isActive'})
                         log_extra_keys(LOG_API, 'readinessStatus', readiness_status, {'connectionState'})
-            log_extra_keys(LOG_API, 'selectivestatus', data, {'measurements', 'access', 'vehicleLights', 'climatisation', 'vehicleHealthInspection',
+            log_extra_keys(LOG_API, 'selectivestatus', data, {'measurements', 'access', 'vehicleLights', 'climatization', 'vehicleHealthInspection',
                                                               'charging', 'readiness'})
 
     def _record_elapsed(self, elapsed: timedelta) -> None:
@@ -1385,10 +1385,10 @@ class Connector(BaseConnector):
                 setting_dict['targetTemperature']['unit'] = 'fahrenheit'
             else:
                 setting_dict['targetTemperature']['unit'] = 'celsius'
-        if isinstance(attribute, BooleanAttribute) and attribute.id == 'climatisation_without_external_power':
-            setting_dict['climatisationWithoutExternalPower'] = value
+        if isinstance(attribute, BooleanAttribute) and attribute.id == 'climatization_without_external_power':
+            setting_dict['climatizationWithoutExternalPower'] = value
         elif settings.climatization_without_external_power.enabled and settings.climatization_without_external_power.value is not None:
-            setting_dict['climatisationWithoutExternalPower'] = settings.climatization_without_external_power.value
+            setting_dict['climatizationWithoutExternalPower'] = settings.climatization_without_external_power.value
         if isinstance(attribute, BooleanAttribute) and attribute.id == 'climatization_at_unlock':
             setting_dict['climatizationElementSettings']['climatizationAtUnlock'] = value
         elif settings.climatization_at_unlock.enabled and settings.climatization_at_unlock.value is not None:
