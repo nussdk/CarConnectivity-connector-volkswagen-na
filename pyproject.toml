@@ -36,6 +36,19 @@ classifiers = [
 ]
 
 [project.urls]
+Repository = "https://github.com/zackcornelius/CarConnectivity-connector-volkswagen-na"
+Issues = "https://github.com/zackcornelius/CarConnectivity-connector-volkswagen-na/issues"
+Changelog = "https://github.com/zackcornelius/CarConnectivity-connector-volkswagen-na/blob/main/CHANGELOG.md"
+
+[dependency-groups]
+dev = [
+    "pre-commit",
+    "bandit",
+]
+ui = [
+    "Flask"
+]
+
 
 [tool.setuptools_scm]
 write_to = "src/carconnectivity_connectors/volkswagen_na/_version.py"
@@ -43,3 +56,11 @@ write_to = "src/carconnectivity_connectors/volkswagen_na/_version.py"
 [tool.pylint.format]
 max-line-length=160
 ignore-patterns= "_version.py"
+
+[tool.ruff]
+line-length = 160
+
+
+[tool.bandit]
+# Exclude common virtualenv folders so Bandit doesn't scan site-packages
+exclude_dirs = [".venv", "venv"]
