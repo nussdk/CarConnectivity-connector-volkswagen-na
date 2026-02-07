@@ -191,7 +191,7 @@ class Connector(BaseConnector):
         self.session: MyVWSession = session
         countrypart = "us"
         if "country" in config:
-            countrypart = config['country']
+            countrypart = config["country"]
         self.base_url = f"https://b-h-s.spr.{countrypart}00.p.con-veh.net"
         self.session.retries = 3
         self.session.timeout = 180
