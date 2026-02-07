@@ -86,8 +86,9 @@ class VWWebSession(OpenIDSession):
 
         target_base_url = parsed_url.scheme + "://" + parsed_url.netloc
 
-        if parsed_url.netloc == "identity.na.vwgroup.io":
-            email_form.target = "/signin-service/v1/b680e751-7e1f-4008-8ec1-3a528183d215@apps_vw-dilab_com/login/identifier"
+        # if parsed_url.netloc == "identity.na.vwgroup.io":
+        #    email_form.target = "/signin-service/v1/b680e751-7e1f-4008-8ec1-3a528183d215@apps_vw-dilab_com/login/identifier"
+        login_app_id = email_form.target.split("/")[3]
 
         # Get password form
         password_form = self._get_password_form(urljoin(target_base_url, email_form.target), email_form.data)
@@ -100,9 +101,7 @@ class VWWebSession(OpenIDSession):
 
         password_form_target_url = f"https://identity.vwgroup.io/signin-service/v1/{self.client_id}/{password_form.target}"
         if parsed_url.netloc == "identity.na.vwgroup.io":
-            password_form_target_url = (
-                "https://identity.na.vwgroup.io/signin-service/v1/b680e751-7e1f-4008-8ec1-3a528183d215@apps_vw-dilab_com/login/authenticate"  # nosec  # B105: endpoint URL, not a password
-            )
+            password_form_target_url = f"https://identity.na.vwgroup.io/signin-service/v1/{login_app_id}/{password_form.target}"  # nosec  # B105: endpoint URL, not a password
 
         print("Password form target", password_form_target_url)
         # Log in and get the redirect URL
@@ -176,6 +175,13 @@ class VWWebSession(OpenIDSession):
         credentials_form = CredentialsFormParser()
         credentials_form.feed(response.text)
 
+        print("Credentials form", response.text)
+        print("Credentials form data", credentials_form.data)
+        print("Credentials form target", credentials_form.target)
+
+        if credentials_form.data.get("registerCredentialsPath", None) == "register":
+            raise AuthenticationError(f"Error during login, account {self.session_user.username} does not exist")
+
         if not credentials_form.target or not all(x in credentials_form.data for x in ["relayState", "hmac", "_csrf"]):
             raise APICompatibilityError("Could not find all required input fields on credentials page")
 
@@ -186,9 +192,6 @@ class VWWebSession(OpenIDSession):
 
         if "errorCode" in credentials_form.data:
             raise AuthenticationError("Error during login, is the username correct?")
-
-        if credentials_form.data.get("registerCredentialsPath", None) == "register":
-            raise AuthenticationError(f"Error during login, account {self.session_user.username} does not exist")
 
         return credentials_form
 
