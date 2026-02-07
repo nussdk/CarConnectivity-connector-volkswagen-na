@@ -6,7 +6,7 @@
                 "type": "volkswagen_na",
                 "disabled": false,
                 "config": {
-                    "country": "us",
+                    "country": "ca",
                     "log_level": "debug",
                     "api_log_level": "debug",
                     "interval": 180

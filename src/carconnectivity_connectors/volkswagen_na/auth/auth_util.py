@@ -40,7 +40,7 @@ class HTMLFormParser(HTMLParser):
         super().__init__()
         self._form_id = form_id
         self._inside_form: bool = False
-        self.target = None
+        self.target: str = ""
         self.data = {}
 
     def _get_attr(self, attrs, name):
@@ -56,7 +56,9 @@ class HTMLFormParser(HTMLParser):
 
         if tag == "form" and self._get_attr(attrs, "id") == self._form_id:
             self._inside_form = True
-            self.target = self._get_attr(attrs, "action")
+            target = self._get_attr(attrs, "action")
+            if target is not None:
+                self.target = target
 
     def handle_endtag(self, tag) -> None:
         if tag == "form" and self._inside_form:
