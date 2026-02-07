@@ -37,13 +37,13 @@ class MyVWSession(VWWebSession):
     MyVWSession class handles the authentication and session management for Volkswagen's myVW service.
     """
 
-    def __init__(self, session_user, **kwargs) -> None:
-        countrypart = "us"
-        if "country" in kwargs:
-            countrypart = kwargs["country"]
+    def __init__(self, session_user, country="us", **kwargs) -> None:
+        client_id = "59992128-69a9-42c3-8621-7942041ba824_MYVW_ANDROID"
+        if country == "ca":
+            client_id = "69eb3c39-d2be-4006-8197-37cc4971e8fe_MYVW_ANDROID"
         super(MyVWSession, self).__init__(
-            client_id="59992128-69a9-42c3-8621-7942041ba824_MYVW_ANDROID",
-            refresh_url=f"https://b-h-s.spr.{countrypart}00.p.con-veh.net/oidc/v1/token",
+            client_id=client_id,
+            refresh_url=f"https://b-h-s.spr.{country}00.p.con-veh.net/oidc/v1/token",
             scope="openid",
             redirect_uri="kombi:///login",
             state=None,
@@ -51,7 +51,7 @@ class MyVWSession(VWWebSession):
             **kwargs,
         )
 
-        self.country = countrypart
+        self.country = country
 
         self.verifier = None
         self.challenge = None
