@@ -530,10 +530,11 @@ class Connector(BaseConnector):
             raise ValueError("vehicle.vin cannot be None")
 
         print("Fetching data for vin", vehicle.vin)
+        token = self.__do_spin(vehicle)
 
         url = self.base_url + f"/rvs/v1/vehicle/{vehicle.uuid}"
 
-        data: Dict[str, Any] | None = self._fetch_data(url, self.session)
+        data: Dict[str, Any] | None = self._fetch_data(url, self.session, token=token)
         if "data" in data:
             data = data["data"]
         if data is not None:
@@ -882,7 +883,7 @@ class Connector(BaseConnector):
 
             if isinstance(vehicle, VolkswagenNAElectricVehicle):
                 climate_url = self.base_url + f"/ev/v1/vehicle/{vehicle.uuid}/climate/summary"
-                climate_data: Dict[str, Any] | None = self._fetch_data(climate_url, self.session)
+                climate_data: Dict[str, Any] | None = self._fetch_data(climate_url, self.session, token=token)
                 if "data" in climate_data:
                     climate_data = climate_data["data"]
                 if "carCapturedTimestamp" in climate_data:
@@ -1178,7 +1179,7 @@ class Connector(BaseConnector):
                     vehicle.charging.commands.add_command(start_stop_command)
 
                 charge_url = self.base_url + f"/ev/v1/vehicle/{vehicle.uuid}/charge/summary"
-                charge_data: Dict[str, Any] | None = self._fetch_data(charge_url, self.session)
+                charge_data: Dict[str, Any] | None = self._fetch_data(charge_url, self.session, token=token)
                 if "data" in charge_data:
                     charge_data = charge_data["data"]
                 if "carCapturedTimestamp" in charge_data:
@@ -1606,7 +1607,8 @@ class Connector(BaseConnector):
         url: str = self.base_url + f"/ev/v1/vehicle/{vuuid}/pretripclimate/settings?tempUnit={unit}"
         try:
             LOG.debug("Setting climatization settings for vehicle %s to %s", vin, str(setting_dict))
-            settings_response: requests.Response = self.session.put(url, data=json.dumps(setting_dict), allow_redirects=True)
+            token = self.__do_spin(vehicle)
+            settings_response: requests.Response = self.session.put(url, data=json.dumps(setting_dict), allow_redirects=True, token=token)
             if settings_response.status_code != requests.codes["ok"]:
                 LOG.error("Could not set climatization settings (%s): %s", settings_response.status_code, settings_response.text)
                 raise SetterError(f"Could not set value ({settings_response.status_code})")
@@ -1652,8 +1654,9 @@ class Connector(BaseConnector):
             raise CommandError(f"Unknown command {command_arguments['command']}")
 
         url: str = self.base_url + f"/ev/v1/vehicle/{vuuid}/pretripclimate/{command_str}"
+        token = self.__do_spin(vehicle)
         try:
-            command_response: requests.Response = self.session.post(url, allow_redirects=True)
+            command_response: requests.Response = self.session.post(url, allow_redirects=True, token=token)
             if command_response.status_code != requests.codes["ok"]:
                 LOG.error("Could not start/stop air conditioning (%s: %s)", command_response.status_code, command_response.text)
                 raise CommandError(f"Could not start/stop air conditioning ({command_response.status_code}: {command_response.text})")
@@ -1677,32 +1680,37 @@ class Connector(BaseConnector):
         # Lock and Unlock doesn't work with 2020-2024 id.4's. I don't have another car to test with
         raise CommandError("LockUnlock not implemented")
 
-    def __do_spin(self, vehicle: VolkswagenNAVehicle, spin: str | None = None) -> None:  # pylint: disable=unused-private-member
+    def __do_spin(self, vehicle: VolkswagenNAVehicle, spin: str | None = None) -> str | None:  # pylint: disable=unused-private-member
         if not isinstance(vehicle, VolkswagenNAVehicle):
             raise CommandError("Object is not a VolkswagenNAVehicle")
         if spin is None:
             if self.active_config["spin"] is None or self.active_config["spin"] == "":
-                raise CommandError("S-PIN is missing, please add S-PIN to your configuration or .netrc file")
+                LOG.warning("S-PIN is missing, please add S-PIN to your configuration or .netrc file")
+                return None
             spin = self.active_config["spin"]
         challenge_url = self.base_url + f"/ss/v1/user/{self.session.user_id}/challenge"
         verify_url = self.base_url + f"/ss/v1/user/{self.session.user_id}/vehicle/{vehicle.uuid.value}/session"
         try:
             challenge_response: requests.Response = self.session.get(challenge_url)
+            if challenge_response.status_code == requests.codes["not_found"]:
+                LOG.warning("SPIN is not set up for this account, skipping SPIN token fetching")
+                return None
             challenge_response_data = challenge_response.json()
             challenge_string = challenge_response_data["data"]["challenge"]
             if challenge_response_data["data"]["remainingTries"] < 3:
-                raise CommandError(f"Skipping SPIN token fetching, only {challenge_response_data['data']['remainingTries']} tries remaining")
+                LOG.warning(f"Skipping SPIN token fetching, only {challenge_response_data['data']['remainingTries']} tries remaining")
+                return None
             verify_string = challenge_string + "." + spin
             verify_hash = hashlib.sha512(verify_string.encode("ascii")).hexdigest()
             verify_data = {"idToken": self.session.id_token, "spinHash": verify_hash, "tsp": "WCT"}
             verify_response: requests.Response = self.session.post(verify_url, data=json.dumps(verify_data), allow_redirects=True, token=self.session.id_token)
             if verify_response.status_code != requests.codes["ok"]:
                 LOG.error("Could not execute spin verify (%s: %s)", verify_response.status_code, verify_response.text)
-                raise CommandError(f"Could not execute spin verify ({verify_response.status_code}: {verify_response.text})")
+                return None
+                # raise CommandError(f"Could not execute spin verify ({verify_response.status_code}: {verify_response.text})")
             else:
                 LOG.info("Spin verify command executed successfully")
-                vehicle.spin_token._set_value(verify_response.json()["data"]["carnetVehicleToken"])  # pylint: disable=protected-access
-                return
+                return verify_response.json()["data"]["carnetVehicleToken"]
         except requests.exceptions.ConnectionError as connection_error:
             raise CommandError(
                 f"Connection error: {connection_error}. If this happens frequently, please check if other applications communicate with the Volkswagen server."
@@ -1733,13 +1741,14 @@ class Connector(BaseConnector):
         if "command" not in command_arguments:
             raise CommandError("Command argument missing")
         try:
+            token = self.__do_spin(vehicle)
             if command_arguments["command"] == ChargingStartStopCommand.Command.START:
                 url = self.base_url + f"/ev/v1/vehicle/{vuuid}/charging/start"
                 charging_request = {"actionMode": "immediate"}
-                command_response: requests.Response = self.session.post(url, data=json.dumps(charging_request), allow_redirects=True)
+                command_response: requests.Response = self.session.post(url, data=json.dumps(charging_request), allow_redirects=True, token=token)
             elif command_arguments["command"] == ChargingStartStopCommand.Command.STOP:
                 url = self.base_url + f"/ev/v1/vehicle/{vuuid}/charging/stop"
-                command_response: requests.Response = self.session.post(url, data="{}", allow_redirects=True)
+                command_response: requests.Response = self.session.post(url, data="{}", allow_redirects=True, token=token)
             else:
                 raise CommandError(f"Unknown command {command_arguments['command']}")
 
@@ -1810,7 +1819,8 @@ class Connector(BaseConnector):
 
         url: str = self.base_url + f"/ev/v1/vehicle/{vuuid}/charging/settings"
         try:
-            settings_response: requests.Response = self.session.put(url, data=json.dumps(setting_dict), allow_redirects=True)
+            token = self.__do_spin(vehicle)
+            settings_response: requests.Response = self.session.put(url, data=json.dumps(setting_dict), allow_redirects=True, token=token)
             if settings_response.status_code != requests.codes["ok"]:
                 LOG.error("Could not set charging settings (%s)", settings_response.status_code)
                 raise SetterError(f"Could not set value ({settings_response.status_code})")
@@ -1848,12 +1858,13 @@ class Connector(BaseConnector):
         if "command" not in command_arguments:
             raise CommandError("Command argument missing")
         try:
+            token = self.__do_spin(vehicle)
             if command_arguments["command"] == WindowHeatingStartStopCommand.Command.START:
                 url = self.base_url + "/ev/v1/vehicle/{vuuid}/pretripclimate/windowheating/start"
-                command_response: requests.Response = self.session.post(url, data="{}", allow_redirects=True)
+                command_response: requests.Response = self.session.post(url, data="{}", allow_redirects=True, token=token)
             elif command_arguments["command"] == WindowHeatingStartStopCommand.Command.STOP:
                 url = self.base_url + "/ev/v1/vehicle/{vuuid}/pretripclimate/windowheating/stop"
-                command_response: requests.Response = self.session.post(url, data="{}", allow_redirects=True)
+                command_response: requests.Response = self.session.post(url, data="{}", allow_redirects=True, token=token)
             else:
                 raise CommandError(f"Unknown command {command_arguments['command']}")
 
