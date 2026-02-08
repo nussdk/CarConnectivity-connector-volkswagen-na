@@ -14,6 +14,7 @@ from datetime import datetime, timezone, timedelta
 import hashlib
 import requests
 
+from requests.exceptions import HTTPError
 from carconnectivity.garage import Garage
 from carconnectivity.errors import (
     AuthenticationError,
@@ -444,6 +445,7 @@ class Connector(BaseConnector):
                                 ):
                                     try:
                                         image_download_response = self.session.get(imageurl, stream=True)
+                                        image_download_response.raise_for_status()
                                         if image_download_response.status_code == requests.codes["ok"]:
                                             img = Image.open(image_download_response.raw)  # pyright: ignore[reportPossiblyUnboundVariable]
                                             if self.session.cache is not None:
@@ -455,6 +457,7 @@ class Connector(BaseConnector):
                                             LOG.info("Server asks for new authorization")
                                             self.session.login()
                                             image_download_response = self.session.get(imageurl, stream=True)
+                                            image_download_response.raise_for_status()
                                             if image_download_response.status_code == requests.codes["ok"]:
                                                 img = Image.open(image_download_response.raw)  # pyright: ignore[reportPossiblyUnboundVariable]
                                                 if self.session.cache is not None:
@@ -530,7 +533,11 @@ class Connector(BaseConnector):
             raise ValueError("vehicle.vin cannot be None")
 
         print("Fetching data for vin", vehicle.vin)
-        token = self.__do_spin(vehicle)
+        try:
+            token = self.__do_spin(vehicle)
+        except HTTPError as err:
+            LOG.error("Authentication error during fetching vehicle status: %s", str(err))
+        token = None
 
         url = self.base_url + f"/rvs/v1/vehicle/{vehicle.uuid}"
 
@@ -1609,6 +1616,7 @@ class Connector(BaseConnector):
             LOG.debug("Setting climatization settings for vehicle %s to %s", vin, str(setting_dict))
             token = self.__do_spin(vehicle)
             settings_response: requests.Response = self.session.put(url, data=json.dumps(setting_dict), allow_redirects=True, token=token)
+            settings_response.raise_for_status()
             if settings_response.status_code != requests.codes["ok"]:
                 LOG.error("Could not set climatization settings (%s): %s", settings_response.status_code, settings_response.text)
                 raise SetterError(f"Could not set value ({settings_response.status_code})")
@@ -1657,6 +1665,7 @@ class Connector(BaseConnector):
         token = self.__do_spin(vehicle)
         try:
             command_response: requests.Response = self.session.post(url, allow_redirects=True, token=token)
+            command_response.raise_for_status()
             if command_response.status_code != requests.codes["ok"]:
                 LOG.error("Could not start/stop air conditioning (%s: %s)", command_response.status_code, command_response.text)
                 raise CommandError(f"Could not start/stop air conditioning ({command_response.status_code}: {command_response.text})")
@@ -1692,6 +1701,7 @@ class Connector(BaseConnector):
         verify_url = self.base_url + f"/ss/v1/user/{self.session.user_id}/vehicle/{vehicle.uuid.value}/session"
         try:
             challenge_response: requests.Response = self.session.get(challenge_url)
+            challenge_response.raise_for_status()
             if challenge_response.status_code == requests.codes["not_found"]:
                 LOG.warning("SPIN is not set up for this account, skipping SPIN token fetching")
                 return None
@@ -1704,6 +1714,7 @@ class Connector(BaseConnector):
             verify_hash = hashlib.sha512(verify_string.encode("ascii")).hexdigest()
             verify_data = {"idToken": self.session.id_token, "spinHash": verify_hash, "tsp": "WCT"}
             verify_response: requests.Response = self.session.post(verify_url, data=json.dumps(verify_data), allow_redirects=True, token=self.session.id_token)
+            verify_response.raise_for_status()
             if verify_response.status_code != requests.codes["ok"]:
                 LOG.error("Could not execute spin verify (%s: %s)", verify_response.status_code, verify_response.text)
                 return None
@@ -1746,9 +1757,11 @@ class Connector(BaseConnector):
                 url = self.base_url + f"/ev/v1/vehicle/{vuuid}/charging/start"
                 charging_request = {"actionMode": "immediate"}
                 command_response: requests.Response = self.session.post(url, data=json.dumps(charging_request), allow_redirects=True, token=token)
+                command_response.raise_for_status()
             elif command_arguments["command"] == ChargingStartStopCommand.Command.STOP:
                 url = self.base_url + f"/ev/v1/vehicle/{vuuid}/charging/stop"
                 command_response: requests.Response = self.session.post(url, data="{}", allow_redirects=True, token=token)
+                command_response.raise_for_status()
             else:
                 raise CommandError(f"Unknown command {command_arguments['command']}")
 
@@ -1821,6 +1834,7 @@ class Connector(BaseConnector):
         try:
             token = self.__do_spin(vehicle)
             settings_response: requests.Response = self.session.put(url, data=json.dumps(setting_dict), allow_redirects=True, token=token)
+            settings_response.raise_for_status()
             if settings_response.status_code != requests.codes["ok"]:
                 LOG.error("Could not set charging settings (%s)", settings_response.status_code)
                 raise SetterError(f"Could not set value ({settings_response.status_code})")
@@ -1862,9 +1876,11 @@ class Connector(BaseConnector):
             if command_arguments["command"] == WindowHeatingStartStopCommand.Command.START:
                 url = self.base_url + "/ev/v1/vehicle/{vuuid}/pretripclimate/windowheating/start"
                 command_response: requests.Response = self.session.post(url, data="{}", allow_redirects=True, token=token)
+                command_response.raise_for_status()
             elif command_arguments["command"] == WindowHeatingStartStopCommand.Command.STOP:
                 url = self.base_url + "/ev/v1/vehicle/{vuuid}/pretripclimate/windowheating/stop"
                 command_response: requests.Response = self.session.post(url, data="{}", allow_redirects=True, token=token)
+                command_response.raise_for_status()
             else:
                 raise CommandError(f"Unknown command {command_arguments['command']}")
 
