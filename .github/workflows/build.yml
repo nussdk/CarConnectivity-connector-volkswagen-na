@@ -4,7 +4,7 @@ name: Build Python Package
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [ main ]
+    branches: [ main, beta ]
     tags:
       - "v*"
     paths:
@@ -57,6 +57,34 @@ jobs:
 #    - name: Test
 #      run: |
 #        make test
+    - name: Auto-increment version tag and publish
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta')
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Get latest tag
+        latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+        latest_tag=${latest_tag#v}  # Remove 'v' prefix
+        
+        # Parse version
+        IFS='.' read -r major minor patch <<< "$latest_tag"
+        
+        # Increment version based on branch
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          # Main: increment patch for stable release
+          patch=$((patch + 1))
+          new_tag="v${major}.${minor}.${patch}"
+        else
+          # Beta: append beta identifier
+          beta_num=$(git tag -l "v${major}.${minor}.${patch}-beta*" | wc -l)
+          beta_num=$((beta_num + 1))
+          new_tag="v${major}.${minor}.${patch}-beta.${beta_num}"
+        fi
+        
+        # Create and push tag
+        git tag -a "$new_tag" -m "Release $new_tag"
+        git push origin "$new_tag"
 
 
 
