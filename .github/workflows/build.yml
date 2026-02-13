@@ -57,8 +57,14 @@ jobs:
 #    - name: Test
 #      run: |
 #        make test
+
+  publish:
+    needs: build-python
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta')
+    steps:
+    - uses: actions/checkout@v6
     - name: Auto-increment version tag and publish
-      if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/beta')
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
